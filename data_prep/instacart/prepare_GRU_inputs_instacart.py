@@ -11,9 +11,9 @@ from ipywidgets import Output
 
 from functions import iter_loadtxt, basket_GRU, basket_GRUX, linear_GRU, custom_BCE, custom_MSE, top_prod_acc, batch_generator, batch_generatorX, BCE
 
-all_coordinates = iter_loadtxt("all_3dcoordinates.csv", delimiter=',', skiprows=1)
+all_coordinates = iter_loadtxt("all_3dcoordinates.csv", delimiter=',', skiprows=1) # all_3dcoordinates.csv is an output from cluster_products_instacart.R
 
-departments = pd.read_csv("departments.csv", delimiter=',').department.tolist()
+departments = pd.read_csv("departments.csv", delimiter=',').department.tolist()  # departments.csv is part of the source files published on Kaggle
 aisles = pd.read_csv("aisles.csv", delimiter=",").aisle.tolist()
 
 all_coordinates = all_coordinates.astype('int64')
