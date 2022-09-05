@@ -1,3 +1,9 @@
+# Load required packages
+library(dplyr)
+library(lsa)
+library(Matrix)
+library(methods)
+
 folder_path = "" # set the path to the folder containing the csv files downloaded from https://www.kaggle.com/c/instacart-market-basket-analysis  
 
 aisles <- read.csv(paste(folder_path,"aisles.csv",sep=""))
@@ -6,10 +12,6 @@ order_products_prior <- read.csv(paste(folder_path,"order_products__prior.csv",s
 order_products_train <- read.csv(paste(folder_path,"order_products__train.csv",sep=""))
 orders <- read.csv(paste(folder_path,"orders.csv",sep=""))
 products <- read.csv(paste(folder_path,"products.csv",sep=""))
-
-# Load required packages
-library(dplyr)
-library(lsa)
 
 # aisle_id column is added to order_products_prior
 prod_aisles <- products[,c(1,3)]
@@ -113,7 +115,117 @@ for (AISLE in aisles$aisle_id) {
   all_clusters <- rbind(all_clusters,cbind(products_aisle_i$product_id,products_aisle_i$product_id[clusters],AISLE))
 }
 
-write.csv(all_clusters,file="finalclusters.csv")
+set.seed(12345)
 
+# The imported matrix all_clusters contains two columns: the first column represents product_id, the
+# second column cluster_id. Columns are not sorted and not all cluster_id's exist.
 
+# Sort the unique cluster_id's from low to high
+clusterlist <- sort(unique(all_clusters[,2]))
 
+# Assign a cluster_id to each product (this time, cluster_id ranges from 1 to #clusters (9407))
+clean_clusters <- integer(NROW(all_clusters))
+for (i in 1:NROW(all_clusters)) {
+  clean_clusters[i] <- which(clusterlist == all_clusters[i,2])
+}
+
+# Order the products from low product_id to high
+final_clusters <- cbind(all_clusters[,1],clean_clusters)
+final_clusters <- final_clusters[order(final_clusters[,1]),]
+
+# Add clusters that are not in the prior data and assign cluster_id to zero again. Finally, sort
+# all products again such that product_id ranges from 1 to #products (49688) without gaps
+max_id <- max(products$product_id)
+not_in_train <- setdiff(c(1:max_id),all_clusters[,1])
+final_clusters <- rbind(final_clusters,cbind(not_in_train,0))
+final_clusters <- final_clusters[order(final_clusters[,1]),]
+
+# Select only 5% of customers, to reduce number of rows
+FRACTION <- 1
+users <- unique(orders$user_id)
+user_selection <- sort(sample(users,FRACTION*NROW(users)))
+order_selection <- orders[orders$user_id %in% user_selection,]
+
+# Determine which baskets are the last for each of the customers in user_selection, set eval_set 
+# to 'test' for these baskets. Remove original test observations.
+order_selection <- order_selection[order_selection$eval_set!='test',]
+
+order_num <- order_selection$order_number[1:NROW(order_selection)-1]
+order_num_next <- order_selection$order_number[2:NROW(order_selection)]
+order_selection$eval_set[order_num > order_num_next] <- 'last'
+order_selection$eval_set[NROW(order_selection)] <- 'last'
+
+# Assign half of the last orders to the test set, other half to the validation set
+last_orders <- order_selection$order_id[order_selection$eval_set=='last']
+val_selection <- sort(sample(last_orders, 0.5*NROW(last_orders)))
+order_selection$eval_set[order_selection$order_id %in% val_selection] <- 'val'
+order_selection$eval_set[order_selection$eval_set=='last'] <- 'test'
+
+train_selection <- order_products_prior[order_products_prior$order_id %in% order_selection$order_id[order_selection$eval_set=='prior'],]
+val_selection1 <- order_products_prior[order_products_prior$order_id %in% order_selection$order_id[order_selection$eval_set=='val'],]
+val_selection2 <- order_products_train[order_products_train$order_id %in% order_selection$order_id[order_selection$eval_set=='val'],]
+val_selection <- rbind(val_selection1,val_selection2)
+test_selection1 <- order_products_prior[order_products_prior$order_id %in% order_selection$order_id[order_selection$eval_set=='test'],]
+test_selection2 <- order_products_train[order_products_train$order_id %in% order_selection$order_id[order_selection$eval_set=='test'],]
+test_selection <- rbind(test_selection1,test_selection2)
+
+# Replace product_id by cluster_id
+training_set <- train_selection
+train_orders <- order_selection$order_id[order_selection$eval_set=='prior']
+training_set$product_id <- final_clusters[train_selection$product_id,2]
+validation_set <- val_selection
+val_orders <- order_selection$order_id[order_selection$eval_set=='val']
+validation_set$product_id <- final_clusters[val_selection$product_id,2]
+test_set <- test_selection
+test_orders <- order_selection$order_id[order_selection$eval_set=='test']
+test_set$product_id <- final_clusters[test_selection$product_id,2]
+
+# Check which products have cluster_id 0 and thus are never bought in the training data, exclude
+# these products from their baskets as they are not assigned to a cluster
+val_bought <- validation_set$product_id>0
+test_bought <- test_set$product_id>0
+validation_set <- validation_set[val_bought,]
+test_set <- test_set[test_bought,]
+
+all_purchases <- rbind(training_set,validation_set,test_set)
+all_coo23 <- all_purchases[,1:2]
+coo1 <- order_selection[,1:4]
+all_coordinates <- merge(coo1,all_coo23,by='order_id')
+all_coordinates <- all_coordinates[,c(2,4,5,3,1)]
+all_coordinates <- all_coordinates[order(all_coordinates[,1],all_coordinates[,2]),]
+
+all_coordinates[,c(1,2,3,5)] <- all_coordinates[,c(1,2,3,5)]-1
+all_coordinates$eval_set[all_coordinates$eval_set=='prior'] <- 0
+all_coordinates$eval_set[all_coordinates$eval_set=='val'] <- 1
+all_coordinates$eval_set[all_coordinates$eval_set=='test'] <- 2
+all_coordinates$eval_set <- as.numeric(all_coordinates$eval_set)
+
+order_selection$eval_set[order_selection$eval_set=='prior'] <- 0
+order_selection$eval_set[order_selection$eval_set=='val'] <- 1
+order_selection$eval_set[order_selection$eval_set=='test'] <- 2
+order_selection$eval_set <- as.numeric(order_selection$eval_set)
+order_selection$order_hour_of_day <- as.numeric(order_selection$order_hour_of_day)
+order_selection$days_since_prior_order[is.na(order_selection$days_since_prior_order)] <- -1
+order_selection$days_since_first_order <- integer(NROW(order_selection))
+
+order_selection$days_since_first_order[order_selection$order_number==2] = order_selection$days_since_prior_order[order_selection$order_number==2]
+for (i in 3:max(order_selection$order_number)) {
+  indices = which(order_selection$order_number==i)
+  order_selection$days_since_first_order[indices] =
+    order_selection$days_since_first_order[indices-1] + order_selection$days_since_prior_order[indices]
+}
+
+night = c(23,0,1,2,3,4,5)
+morning = c(6,7)
+day = 8:20
+evening = c(21,22)
+order_selection$part_of_day <- order_selection$order_hour_of_day
+order_selection$part_of_day[order_selection$part_of_day %in% night] = 0
+order_selection$part_of_day[order_selection$part_of_day %in% morning] = 1
+order_selection$part_of_day[order_selection$part_of_day %in% day] = order_selection$part_of_day[order_selection$part_of_day %in% day]-6
+order_selection$part_of_day[order_selection$part_of_day %in% evening] = 15
+
+order_selection$part_of_week = order_selection$order_dow*16 + order_selection$part_of_day
+
+write.csv(all_coordinates,"all_3dcoordinates.csv",row.names=FALSE)
+write.csv(order_selection,file="order_selection.csv",row.names=FALSE)
