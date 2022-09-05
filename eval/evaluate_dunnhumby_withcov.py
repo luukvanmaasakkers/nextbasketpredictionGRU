@@ -11,7 +11,7 @@ import pandas as pd
 from model_functions import iter_loadtxt, basket_GRU, basket_GRUX, linear_GRU, custom_BCE, custom_MSE, top_prod_acc, batch_generator, batch_generatorX, BCE
 
 # Before running this file, make sure that prepare_GRU_inputs_dunnhumby.py is run in the same session 
-# and the trained GRU model basketGRU_dunnhumby_withcov.pth is obtained from the train_dunnhumby.py file
+# and the trained GRU model basketGRU_dunnhumby_withcov.pth is obtained from the train_dunnhumby_withcov.py file
 
 def measures(pred,target):
     """
