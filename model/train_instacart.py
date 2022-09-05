@@ -7,6 +7,8 @@ import time
 
 from model_functions import iter_loadtxt, basket_GRU, basket_GRUX, linear_GRU, custom_BCE, custom_MSE, top_prod_acc, batch_generator, batch_generatorX, BCE
 
+# Prior to running this file, prepare_GRU_inputs_instacart.py must be run in the same session
+
 batch_size = 64
 hidden_dim = 750
 rc_dropout = False
@@ -110,5 +112,4 @@ torch.save({'epoch': epoch_count,
             'tloss': train_loss,
             'vacc': val_acc,
             'tacc': train_acc
-            }, "basketGRU_instacart.pth")
-
+            }, "basketGRU_instacart.pth") # saves the network, losses and accuracies
