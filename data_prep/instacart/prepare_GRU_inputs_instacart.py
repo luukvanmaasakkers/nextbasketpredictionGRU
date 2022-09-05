@@ -11,7 +11,7 @@ from ipywidgets import Output
 
 from functions import iter_loadtxt, basket_GRU, basket_GRUX, linear_GRU, custom_BCE, custom_MSE, top_prod_acc, batch_generator, batch_generatorX, BCE
 
-all_coordinates = iter_loadtxt("drive/MyDrive/all_3dcoordinates.csv", delimiter=',', skiprows=1)
+all_coordinates = iter_loadtxt("all_3dcoordinates.csv", delimiter=',', skiprows=1)
 
 departments = pd.read_csv("departments.csv", delimiter=',').department.tolist()
 aisles = pd.read_csv("aisles.csv", delimiter=",").aisle.tolist()
