@@ -9,9 +9,9 @@ import pandas as pd
 from IPython.display import display, clear_output
 from ipywidgets import Output
 
-from functions import iter_loadtxt, basket_GRU, basket_GRUX, linear_GRU, custom_BCE, custom_MSE, top_prod_acc, batch_generator, batch_generatorX, BCE
+from model_functions import iter_loadtxt
 
-dunnhumby = iter_loadtxt("/data/transaction_data.csv", delimiter=',', skiprows=1).astype('int64')
+dunnhumby = iter_loadtxt("transaction_data.csv", delimiter=',', skiprows=1).astype('int64') # csv file can be downloaded from Kaggle
 
 products = dunnhumby[:,3]
 prod_freq = np.unique(products,return_counts = True)
