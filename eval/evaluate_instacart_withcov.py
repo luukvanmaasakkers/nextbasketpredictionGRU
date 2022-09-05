@@ -73,8 +73,8 @@ del last_baskets, last_baskets_untied
 
 batch_size = 32
 hidden_dim = 750
-model = basket_GRU(ntime,nprod,hidden_dim)
-test_generator = batch_generator(test_input, test_output, test_last, batch_size, np.shape(test_users)[0], shuffle = True)
+model = basket_GRUX(batch_size, ntime-1, nprod, hidden_dim, seq_dim, hour_dim, seq_hidden, hour_hidden)
+test_generator = batch_generatorX(test_input, test_hour_input, test_seq_input, test_output, test_last, batch_size, np.shape(test_users)[0], shuffle = True)  
 
 checkpoint = torch.load("drive/MyDrive/GRU revision/basketGRU_instacart.pth") # Load trained network
 model.load_state_dict(checkpoint["model_state_dict"])
@@ -102,13 +102,15 @@ testbce3 = 0
 
 out = Output()
 for j in np.arange(ntest_batches):
-  (selection, input, target, last) = next(test_generator)
+  (selection, input, hour, seq, target, last) = next(test_generator)
+  hour = torch.from_numpy(hour.todense()).float().to(device)
+  seq = torch.from_numpy(seq).float().to(device)
   
   inputs = torch.from_numpy(input.todense()).float().to(device)
   targets = torch.from_numpy(target.todense()).float().to(device)
   seq_lengths = torch.from_numpy(last.astype('long')).long().to(device)
     
-  test_pred = model(inputs)
+  test_pred = model(inputs, hour, seq)
 
   target_last = targets[torch.arange(targets.size()[0]),seq_lengths-1,:]
   pred_last = test_pred[torch.arange(targets.size()[0]),seq_lengths-1,:]
