@@ -14,7 +14,7 @@ from functions import iter_loadtxt, basket_GRU, basket_GRUX, linear_GRU, custom_
 all_coordinates = iter_loadtxt("all_3dcoordinates.csv", delimiter=',', skiprows=1) # all_3dcoordinates.csv is an output from cluster_products_instacart.R
 
 departments = pd.read_csv("departments.csv", delimiter=',').department.tolist()  # departments.csv is part of the source files published on Kaggle
-aisles = pd.read_csv("aisles.csv", delimiter=",").aisle.tolist()
+aisles = pd.read_csv("aisles.csv", delimiter=",").aisle.tolist() # aisles.csv is part of the source files published on Kaggle
 
 all_coordinates = all_coordinates.astype('int64')
 
